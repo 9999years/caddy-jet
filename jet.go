@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package templates implements template execution for files to be
-// dynamically rendered for the client.
-package templates
+// Package jettemplates implements CloudyKit Jet template execution for files
+// to be dynamically rendered for the client.
+package jettemplates
 
 import (
 	"bytes"
@@ -25,14 +25,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/mholt/caddy/caddyhttp/httpserver"
+
+	"github.com/CloudyKit/jet"
 )
 
 // ServeHTTP implements the httpserver.Handler interface.
-func (t Templates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
+func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 	// iterate rules, to find first one that matches the request path
 	for _, rule := range t.Rules {
 		if !httpserver.Path(r.URL.Path).Matches(rule.Path) {
@@ -74,34 +75,31 @@ func (t Templates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error
 		}
 
 		// create a new template
-		// TODO: consider replacing this with template.ParseFiles
 		templateName := filepath.Base(fpath)
-		tpl := template.New(templateName)
-
-		// set delimiters
-		if rule.Delims != [2]string{} {
-			tpl.Delims(rule.Delims[0], rule.Delims[1])
-		}
-
-		// add custom functions
-		tpl.Funcs(httpserver.TemplateFuncs)
-
-		// parse the template
-		parsedTpl, err := tpl.Parse(rb.Buffer.String())
+		tpl, err := t.View.GetTemplate(templateName)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
+
+		// add custom functions
+		//tpl.Funcs(httpserver.TemplateFuncs)
+
+		// parse the template
+		//parsedTpl, err := tpl.Parse(rb.Buffer.String())
+		//if err != nil {
+			//return http.StatusInternalServerError, err
+		//}
 
 		// create execution context for the template template
 		ctx := httpserver.NewContextWithHeader(w.Header())
 		ctx.Root = t.FileSys
 		ctx.Req = r
 		ctx.URL = r.URL
-		ctx.Template = tpl
 
 		// execute the template
 		buf.Reset()
-		err = parsedTpl.Execute(buf, ctx)
+		// TODO: vars
+		err = tpl.Execute(buf, nil, nil)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -125,21 +123,21 @@ func (t Templates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error
 	return t.Next.ServeHTTP(w, r)
 }
 
-// Templates is middleware to render templated files as the HTTP response.
-type Templates struct {
+// JetTemplates is middleware to render templated files as the HTTP response.
+type JetTemplates struct {
 	Next    httpserver.Handler
 	Rules   []Rule
 	Root    string
 	FileSys http.FileSystem
 	BufPool *sync.Pool // docs: "A Pool must not be copied after first use."
+	View    *jet.Set
 }
 
-// Rule represents a template rule. A template will only execute
+// Rule represents a jet rule. A template will only execute
 // with this rule if the request path matches the Path specified
 // and requests a resource with one of the extensions specified.
 type Rule struct {
 	Path       string
 	Extensions []string
 	IndexFiles []string
-	Delims     [2]string
 }

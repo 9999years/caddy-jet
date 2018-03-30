@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package templates
+package jettemplates
 
 import (
 	"bytes"
 	"net/http"
 	"sync"
+	"path/filepath"
 
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
+
+	"github.com/CloudyKit/jet"
 )
 
 func init() {
-	caddy.RegisterPlugin("templates", caddy.Plugin{
+	caddy.RegisterPlugin("jet", caddy.Plugin{
 		ServerType: "http",
 		Action:     setup,
 	})
@@ -32,14 +35,14 @@ func init() {
 
 // setup configures a new Templates middleware instance.
 func setup(c *caddy.Controller) error {
-	rules, err := templatesParse(c)
+	rules, err := jetParse(c)
 	if err != nil {
 		return err
 	}
 
 	cfg := httpserver.GetConfig(c)
 
-	tmpls := Templates{
+	tmpls := JetTemplates{
 		Rules:   rules,
 		Root:    cfg.Root,
 		FileSys: http.Dir(cfg.Root),
@@ -48,6 +51,7 @@ func setup(c *caddy.Controller) error {
 				return new(bytes.Buffer)
 			},
 		},
+		View: jet.NewHTMLSet(filepath.Dir(cfg.Root)),
 	}
 
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
@@ -58,14 +62,14 @@ func setup(c *caddy.Controller) error {
 	return nil
 }
 
-func templatesParse(c *caddy.Controller) ([]Rule, error) {
+func jetParse(c *caddy.Controller) ([]Rule, error) {
 	var rules []Rule
 
 	for c.Next() {
 		var rule Rule
 
-		rule.Path = defaultTemplatePath
-		rule.Extensions = defaultTemplateExtensions
+		rule.Path = defaultJetPath
+		rule.Extensions = defaultJetExtensions
 
 		args := c.RemainingArgs()
 
@@ -87,14 +91,6 @@ func templatesParse(c *caddy.Controller) ([]Rule, error) {
 						return nil, c.ArgErr()
 					}
 					rule.Extensions = args
-
-				case "between":
-					args := c.RemainingArgs()
-					if len(args) != 2 {
-						return nil, c.ArgErr()
-					}
-					rule.Delims[0] = args[0]
-					rule.Delims[1] = args[1]
 				}
 			}
 		default:
@@ -104,7 +100,7 @@ func templatesParse(c *caddy.Controller) ([]Rule, error) {
 			// Any remaining arguments are extensions
 			rule.Extensions = args[1:]
 			if len(rule.Extensions) == 0 {
-				rule.Extensions = defaultTemplateExtensions
+				rule.Extensions = defaultJetExtensions
 			}
 		}
 
@@ -117,6 +113,5 @@ func templatesParse(c *caddy.Controller) ([]Rule, error) {
 	return rules, nil
 }
 
-const defaultTemplatePath = "/"
-
-var defaultTemplateExtensions = []string{".html", ".htm", ".tmpl", ".tpl", ".txt"}
+const defaultJetPath = "/"
+var defaultJetExtensions = []string{".html", ".htm", ".jet"}
