@@ -134,7 +134,6 @@ func TestTemplates(t *testing.T) {
 			req = req.WithContext(context.WithValue(req.Context(), httpserver.OriginalURLCtxKey, *req.URL))
 
 			rec := httptest.NewRecorder()
-			println("response: ", rec.Body.String())
 
 			c.tpl.ServeHTTP(rec, req)
 
