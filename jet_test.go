@@ -59,7 +59,7 @@ func TestTemplates(t *testing.T) {
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
 				Path:       "/",
-				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
+				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/")),
 			},
 		},
 		Root:    siteRoot,
@@ -80,8 +80,7 @@ func TestTemplates(t *testing.T) {
 			tpl:      tmpl,
 			req:      "/photos/test.html",
 			respCode: http.StatusOK,
-			res: `<!DOCTYPE html><html><head><title>test page</title></head><body><h1>Header title</h1>
-</body></html>
+			res: `<!DOCTYPE html><html><head><title>example title</title></head><body>body</body></html>
 `,
 		},
 
@@ -95,20 +94,26 @@ func TestTemplates(t *testing.T) {
 		},
 
 		{
-			tpl:      tmpl,
-			req:      "/images/img2.htm",
-			respCode: http.StatusOK,
-			res: `<!DOCTYPE html><html><head><title>img</title></head><body>{{.Include "header.html"}}</body></html>
-`,
-		},
-
-		{
 			tpl:      tmplroot,
 			req:      "/root.html",
 			respCode: http.StatusOK,
 			res: `<!DOCTYPE html><html><head><title>root</title></head><body><h1>Header title</h1>
 </body></html>
 `,
+		},
+
+		{
+			tpl:      tmplroot,
+			req:      "/malformed.html",
+			respCode: http.StatusInternalServerError,
+			res: ``,
+		},
+
+		{
+			tpl:      tmplroot,
+			req:      "/syntax_error.html",
+			respCode: http.StatusInternalServerError,
+			res: ``,
 		},
 
 		// test extension filter
@@ -129,16 +134,17 @@ func TestTemplates(t *testing.T) {
 			req = req.WithContext(context.WithValue(req.Context(), httpserver.OriginalURLCtxKey, *req.URL))
 
 			rec := httptest.NewRecorder()
+			println("response: ", rec.Body.String())
 
 			c.tpl.ServeHTTP(rec, req)
 
 			if rec.Code != c.respCode {
-				t.Fatalf("Test: Wrong response code: %d, should be %d", rec.Code, c.respCode)
+				t.Fatalf("Test: Wrong response code for request %v: %d, should be %d", c.req, rec.Code, c.respCode)
 			}
 
 			respBody := rec.Body.String()
 			if respBody != c.res {
-				t.Fatalf("Test: the expected body %v is different from the response one: %v", c.res, respBody)
+				t.Fatalf("Test %v: the expected body %v is different from the response one: %v", c.req, c.res, respBody)
 			}
 		})
 	}
