@@ -1,0 +1,6 @@
+localhost {
+	errors stdout
+	log stdout
+	bare
+	jet
+}
