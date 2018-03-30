@@ -21,26 +21,30 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"path/filepath"
 
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/mholt/caddy/caddyhttp/staticfiles"
+
+	"github.com/CloudyKit/jet"
 )
 
 func TestTemplates(t *testing.T) {
 	siteRoot := "./testdata"
-	tmpl := Templates{
+	tmpl := JetTemplates{
 		Next: staticfiles.FileServer{Root: http.Dir(siteRoot)},
 		Rules: []Rule{
 			{
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
 				Path:       "/photos",
+				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/photos")),
 			},
 			{
 				Extensions: []string{".html", ".htm"},
 				IndexFiles: []string{"index.html", "index.htm"},
 				Path:       "/images",
-				Delims:     [2]string{"{%", "%}"},
+				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
 			},
 		},
 		Root:    siteRoot,
@@ -48,13 +52,14 @@ func TestTemplates(t *testing.T) {
 		BufPool: &sync.Pool{New: func() interface{} { return new(bytes.Buffer) }},
 	}
 
-	tmplroot := Templates{
+	tmplroot := JetTemplates{
 		Next: staticfiles.FileServer{Root: http.Dir(siteRoot)},
 		Rules: []Rule{
 			{
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
 				Path:       "/",
+				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
 			},
 		},
 		Root:    siteRoot,
@@ -66,7 +71,7 @@ func TestTemplates(t *testing.T) {
 	httpserver.TemplateFuncs["root"] = func() string { return "root" }
 
 	for _, c := range []struct {
-		tpl      Templates
+		tpl      JetTemplates
 		req      string
 		respCode int
 		res      string
@@ -111,7 +116,7 @@ func TestTemplates(t *testing.T) {
 			tpl:      tmplroot,
 			req:      "/as_it_is.txt",
 			respCode: http.StatusOK,
-			res: `<!DOCTYPE html><html><head><title>as it is</title></head><body>{{.Include "header.html"}}</body></html>
+			res: `<!DOCTYPE html><html><head><title>as it is</title></head><body>{{include "header.html"}}</body></html>
 `,
 		},
 	} {

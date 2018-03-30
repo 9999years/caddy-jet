@@ -51,7 +51,6 @@ func setup(c *caddy.Controller) error {
 				return new(bytes.Buffer)
 			},
 		},
-		View: jet.NewHTMLSet(filepath.Dir(cfg.Root)),
 	}
 
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
@@ -62,8 +61,13 @@ func setup(c *caddy.Controller) error {
 	return nil
 }
 
+func (r Rule) initView(cfg *httpserver.SiteConfig) *jet.Set {
+	return jet.NewHTMLSet(filepath.Join(cfg.Root, r.Path))
+}
+
 func jetParse(c *caddy.Controller) ([]Rule, error) {
 	var rules []Rule
+	cfg := httpserver.GetConfig(c)
 
 	for c.Next() {
 		var rule Rule
@@ -107,6 +111,8 @@ func jetParse(c *caddy.Controller) ([]Rule, error) {
 		for _, ext := range rule.Extensions {
 			rule.IndexFiles = append(rule.IndexFiles, "index"+ext)
 		}
+
+		rule.initView(cfg)
 
 		rules = append(rules, rule)
 	}

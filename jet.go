@@ -76,7 +76,7 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 
 		// create a new template
 		templateName := filepath.Base(fpath)
-		tpl, err := t.View.GetTemplate(templateName)
+		tpl, err := rule.View.GetTemplate(templateName)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -99,7 +99,7 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 		// execute the template
 		buf.Reset()
 		// TODO: vars
-		err = tpl.Execute(buf, nil, nil)
+		err = tpl.Execute(buf, nil, ctx)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -130,7 +130,6 @@ type JetTemplates struct {
 	Root    string
 	FileSys http.FileSystem
 	BufPool *sync.Pool // docs: "A Pool must not be copied after first use."
-	View    *jet.Set
 }
 
 // Rule represents a jet rule. A template will only execute
@@ -140,4 +139,5 @@ type Rule struct {
 	Path       string
 	Extensions []string
 	IndexFiles []string
+	View       *jet.Set
 }

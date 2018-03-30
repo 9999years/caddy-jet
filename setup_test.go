@@ -34,27 +34,24 @@ func TestSetup(t *testing.T) {
 	}
 
 	handler := mids[0](httpserver.EmptyNext)
-	myHandler, ok := handler.(Templates)
+	myHandler, ok := handler.(JetTemplates)
 
 	if !ok {
-		t.Fatalf("Expected handler to be type Templates, got: %#v", handler)
+		t.Fatalf("Expected handler to be type JetTemplates, got: %#v", handler)
 	}
 
-	if myHandler.Rules[0].Path != defaultTemplatePath {
+	if myHandler.Rules[0].Path != defaultJetPath {
 		t.Errorf("Expected / as the default Path")
 	}
-	if fmt.Sprint(myHandler.Rules[0].Extensions) != fmt.Sprint(defaultTemplateExtensions) {
-		t.Errorf("Expected %v to be the Default Extensions", defaultTemplateExtensions)
+	if fmt.Sprint(myHandler.Rules[0].Extensions) != fmt.Sprint(defaultJetExtensions) {
+		t.Errorf("Expected %v to be the Default Extensions", defaultJetExtensions)
 	}
 	var indexFiles []string
-	for _, extension := range defaultTemplateExtensions {
+	for _, extension := range defaultJetExtensions {
 		indexFiles = append(indexFiles, "index"+extension)
 	}
 	if fmt.Sprint(myHandler.Rules[0].IndexFiles) != fmt.Sprint(indexFiles) {
 		t.Errorf("Expected %v to be the Default Index files", indexFiles)
-	}
-	if myHandler.Rules[0].Delims != [2]string{} {
-		t.Errorf("Expected %v to be the Default Delims", [2]string{})
 	}
 }
 
@@ -64,40 +61,34 @@ func TestTemplatesParse(t *testing.T) {
 		shouldErr              bool
 		expectedTemplateConfig []Rule
 	}{
-		{`templates /api1`, false, []Rule{{
+		{`jet /api1`, false, []Rule{{
 			Path:       "/api1",
-			Extensions: defaultTemplateExtensions,
-			Delims:     [2]string{},
+			Extensions: defaultJetExtensions,
 		}}},
-		{`templates /api2 .txt .htm`, false, []Rule{{
+		{`jet /api2 .txt .htm`, false, []Rule{{
 			Path:       "/api2",
 			Extensions: []string{".txt", ".htm"},
-			Delims:     [2]string{},
 		}}},
 
-		{`templates /api3 .htm .html
-		  templates /api4 .txt .tpl `, false, []Rule{{
+		{`jet /api3 .htm .html
+		  jet /api4 .txt .tpl `, false, []Rule{{
 			Path:       "/api3",
 			Extensions: []string{".htm", ".html"},
-			Delims:     [2]string{},
 		}, {
 			Path:       "/api4",
 			Extensions: []string{".txt", ".tpl"},
-			Delims:     [2]string{},
 		}}},
-		{`templates {
+		{`jet {
 				path /api5
 				ext .html
-				between {% %}
 			}`, false, []Rule{{
 			Path:       "/api5",
 			Extensions: []string{".html"},
-			Delims:     [2]string{"{%", "%}"},
 		}}},
 	}
 	for i, test := range tests {
 		c := caddy.NewTestController("http", test.inputTemplateConfig)
-		actualTemplateConfigs, err := templatesParse(c)
+		actualTemplateConfigs, err := jetParse(c)
 
 		if err == nil && test.shouldErr {
 			t.Errorf("Test %d didn't error, but it should have", i)
@@ -105,12 +96,12 @@ func TestTemplatesParse(t *testing.T) {
 			t.Errorf("Test %d errored, but it shouldn't have; got '%v'", i, err)
 		}
 		if len(actualTemplateConfigs) != len(test.expectedTemplateConfig) {
-			t.Fatalf("Test %d expected %d no of Template configs, but got %d ",
+			t.Fatalf("Test %d expected %d no of JetTemplate configs, but got %d ",
 				i, len(test.expectedTemplateConfig), len(actualTemplateConfigs))
 		}
 		for j, actualTemplateConfig := range actualTemplateConfigs {
 			if actualTemplateConfig.Path != test.expectedTemplateConfig[j].Path {
-				t.Errorf("Test %d expected %dth Template Config Path to be  %s  , but got %s",
+				t.Errorf("Test %d expected %dth JetTemplate Config Path to be  %s  , but got %s",
 					i, j, test.expectedTemplateConfig[j].Path, actualTemplateConfig.Path)
 			}
 			if fmt.Sprint(actualTemplateConfig.Extensions) != fmt.Sprint(test.expectedTemplateConfig[j].Extensions) {
