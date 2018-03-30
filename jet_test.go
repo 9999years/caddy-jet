@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jettemplates
+package jet
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ import (
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/mholt/caddy/caddyhttp/staticfiles"
 
-	"github.com/CloudyKit/jet"
+	ckjet "github.com/CloudyKit/jet"
 )
 
 func TestTemplates(t *testing.T) {
@@ -38,13 +38,13 @@ func TestTemplates(t *testing.T) {
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
 				Path:       "/photos",
-				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/photos")),
+				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/photos")),
 			},
 			{
 				Extensions: []string{".html", ".htm"},
 				IndexFiles: []string{"index.html", "index.htm"},
 				Path:       "/images",
-				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
+				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
 			},
 		},
 		Root:    siteRoot,
@@ -59,7 +59,7 @@ func TestTemplates(t *testing.T) {
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
 				Path:       "/",
-				View:       jet.NewHTMLSet(filepath.Join(siteRoot, "/")),
+				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/")),
 			},
 		},
 		Root:    siteRoot,

@@ -14,7 +14,7 @@
 
 // Package jettemplates implements CloudyKit Jet template execution for files
 // to be dynamically rendered for the client.
-package jettemplates
+package jet
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ import (
 
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 
-	"github.com/CloudyKit/jet"
+	ckjet "github.com/CloudyKit/jet"
 )
 
 // ServeHTTP implements the httpserver.Handler interface.
@@ -139,5 +139,5 @@ type Rule struct {
 	Path       string
 	Extensions []string
 	IndexFiles []string
-	View       *jet.Set
+	View       *ckjet.Set
 }

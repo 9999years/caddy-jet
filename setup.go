@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jettemplates
+package jet
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 
-	"github.com/CloudyKit/jet"
+	ckjet "github.com/CloudyKit/jet"
 )
 
 func init() {
@@ -61,8 +61,8 @@ func setup(c *caddy.Controller) error {
 	return nil
 }
 
-func (r Rule) initView(cfg *httpserver.SiteConfig) *jet.Set {
-	return jet.NewHTMLSet(filepath.Join(cfg.Root, r.Path))
+func (r Rule) initView(cfg *httpserver.SiteConfig) *ckjet.Set {
+	return ckjet.NewHTMLSet(filepath.Join(cfg.Root, r.Path))
 }
 
 func jetParse(c *caddy.Controller) ([]Rule, error) {
