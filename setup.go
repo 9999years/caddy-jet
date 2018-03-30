@@ -31,6 +31,7 @@ func init() {
 		ServerType: "http",
 		Action:     setup,
 	})
+	httpserver.RegisterDevDirective("jet", "templates")
 }
 
 // setup configures a new Templates middleware instance.

@@ -1,6 +1,6 @@
 localhost {
+	jet
 	errors stdout
 	log stdout
-	bare
-	jet
+	ext .html .jet
 }
