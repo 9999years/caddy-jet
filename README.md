@@ -16,6 +16,7 @@ This is a direct fork of Caddy’s `templates` directive.
 
 # Roadmap
 
+* Make the plugin work instead of crash horribly
 * Block directive format.
 * Custom file inclusions / exclusions by glob or regex.
 * Some way to supply a custom context with a `fastcgi` proxy; this is out of
