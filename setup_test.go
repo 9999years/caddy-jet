@@ -40,8 +40,8 @@ func TestSetup(t *testing.T) {
 		t.Fatalf("Expected handler to be type JetTemplates, got: %#v", handler)
 	}
 
-	if myHandler.Rules[0].Path != defaultJetPath {
-		t.Errorf("Expected / as the default Path")
+	if myHandler.Rules[0].Root != defaultJetPath {
+		t.Errorf("Expected / as the default Root")
 	}
 	if fmt.Sprint(myHandler.Rules[0].Extensions) != fmt.Sprint(defaultJetExtensions) {
 		t.Errorf("Expected %v to be the Default Extensions", defaultJetExtensions)
@@ -61,28 +61,32 @@ func TestTemplatesParse(t *testing.T) {
 		shouldErr              bool
 		expectedTemplateConfig []Rule
 	}{
+		{`jet`, false, []Rule{{
+			Root:       defaultJetPath,
+			Extensions: defaultJetExtensions,
+		}}},
 		{`jet /api1`, false, []Rule{{
-			Path:       "/api1",
+			Root:       "/api1",
 			Extensions: defaultJetExtensions,
 		}}},
 		{`jet /api2 .txt .htm`, false, []Rule{{
-			Path:       "/api2",
+			Root:       "/api2",
 			Extensions: []string{".txt", ".htm"},
 		}}},
 
 		{`jet /api3 .htm .html
 		  jet /api4 .txt .tpl `, false, []Rule{{
-			Path:       "/api3",
+			Root:       "/api3",
 			Extensions: []string{".htm", ".html"},
 		}, {
-			Path:       "/api4",
+			Root:       "/api4",
 			Extensions: []string{".txt", ".tpl"},
 		}}},
 		{`jet {
 				path /api5
 				ext .html
 			}`, false, []Rule{{
-			Path:       "/api5",
+			Root:       "/api5",
 			Extensions: []string{".html"},
 		}}},
 	}
@@ -100,9 +104,9 @@ func TestTemplatesParse(t *testing.T) {
 				i, len(test.expectedTemplateConfig), len(actualTemplateConfigs))
 		}
 		for j, actualTemplateConfig := range actualTemplateConfigs {
-			if actualTemplateConfig.Path != test.expectedTemplateConfig[j].Path {
-				t.Errorf("Test %d expected %dth JetTemplate Config Path to be  %s  , but got %s",
-					i, j, test.expectedTemplateConfig[j].Path, actualTemplateConfig.Path)
+			if actualTemplateConfig.Root != test.expectedTemplateConfig[j].Root {
+				t.Errorf("Test %d expected %dth JetTemplate Config Root to be  %s  , but got %s",
+					i, j, test.expectedTemplateConfig[j].Root, actualTemplateConfig.Root)
 			}
 			if fmt.Sprint(actualTemplateConfig.Extensions) != fmt.Sprint(test.expectedTemplateConfig[j].Extensions) {
 				t.Errorf("Expected %v to be the  Extensions , but got %v instead", test.expectedTemplateConfig[j].Extensions, actualTemplateConfig.Extensions)

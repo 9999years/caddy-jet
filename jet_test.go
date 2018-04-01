@@ -23,10 +23,11 @@ import (
 	"testing"
 	"path/filepath"
 
+	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/mholt/caddy/caddyhttp/staticfiles"
 
-	ckjet "github.com/CloudyKit/jet"
+	"github.com/CloudyKit/jet"
 )
 
 func TestTemplates(t *testing.T) {
@@ -37,18 +38,17 @@ func TestTemplates(t *testing.T) {
 			{
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
-				Path:       "/photos",
-				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/photos")),
+				Root:       "/photos",
+				View:       *jet.NewHTMLSet(filepath.Join(siteRoot, "/photos")),
 			},
 			{
 				Extensions: []string{".html", ".htm"},
 				IndexFiles: []string{"index.html", "index.htm"},
-				Path:       "/images",
-				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
+				Root:       "/images",
+				View:       *jet.NewHTMLSet(filepath.Join(siteRoot, "/images")),
 			},
 		},
-		Root:    siteRoot,
-		FileSys: http.Dir(siteRoot),
+		SiteRoot:    siteRoot,
 		BufPool: &sync.Pool{New: func() interface{} { return new(bytes.Buffer) }},
 	}
 
@@ -58,13 +58,30 @@ func TestTemplates(t *testing.T) {
 			{
 				Extensions: []string{".html"},
 				IndexFiles: []string{"index.html"},
-				Path:       "/",
-				View:       ckjet.NewHTMLSet(filepath.Join(siteRoot, "/")),
+				Root:       "/",
+				View:       *jet.NewHTMLSet(filepath.Join(siteRoot, "/")),
 			},
 		},
-		Root:    siteRoot,
-		FileSys: http.Dir(siteRoot),
+		SiteRoot:    siteRoot,
 		BufPool: &sync.Pool{New: func() interface{} { return new(bytes.Buffer) }},
+	}
+
+	integration := JetTemplates{
+		Next: staticfiles.FileServer{Root: http.Dir(siteRoot)},
+		Rules: []Rule{
+			{
+				Extensions: defaultJetExtensions,
+				IndexFiles: []string{"index.html", "index.jet"},
+				Root:       "/",
+				View:       *jet.NewHTMLSet(filepath.Join(siteRoot, "/")),
+			},
+		},
+		SiteRoot: siteRoot,
+		BufPool: &sync.Pool{
+			New: func() interface{} {
+				return new(bytes.Buffer)
+			},
+		},
 	}
 
 	// register custom function which is used in template
@@ -124,6 +141,15 @@ func TestTemplates(t *testing.T) {
 			res: `<!DOCTYPE html><html><head><title>as it is</title></head><body>{{include "header.html"}}</body></html>
 `,
 		},
+
+		{
+			tpl:      integration,
+			req:      "/root.html",
+			respCode: http.StatusOK,
+			res: `<!DOCTYPE html><html><head><title>root</title></head><body><h1>Header title</h1>
+</body></html>
+`,
+		},
 	} {
 		c := c
 		t.Run("", func(t *testing.T) {
@@ -147,4 +173,55 @@ func TestTemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+type ReqTest struct {
+	t *testing.T
+	rule string
+	req string
+	expect string
+	code int
+}
+
+func testReq(test ReqTest) {
+	req, err := http.NewRequest("GET", test.req, nil)
+	if err != nil {
+		test.t.Fatalf("Test: Could not create HTTP request to %v: %v",
+			test.req, err)
+	}
+	controller := caddy.NewTestController("http", `localhost {
+		root ./testdata
+		errors stderr` +
+		test.rule +
+	"\n}")
+	jetTemplates, err := NewJetTemplates(controller)
+	if err != nil {
+		test.t.Fatalf("Error setting up templates: %v", err)
+	}
+	resp := httptest.NewRecorder()
+
+	jetTemplates.ServeHTTP(resp, req)
+
+	res := resp.Result()
+
+	if test.code != res.StatusCode {
+		test.t.Fatalf("Test: Wrong response code for request %v: %d, should be %d", test.req, test.code, res.StatusCode)
+	}
+
+	respBody := resp.Body.String()
+	if respBody != test.expect {
+		test.t.Fatalf("Test %v: the expected body %v is different from the response one: %v", test.req, test.expect, respBody)
+	}
+}
+
+func TestErr(t *testing.T) {
+	testReq(ReqTest{
+		t: t,
+		rule: "jet",
+		req: "/root.html",
+		expect: `<!DOCTYPE html><html><head><title>root</title></head><body><h1>Header title</h1>
+</body></html>
+`,
+		code: http.StatusOK,
+	})
 }

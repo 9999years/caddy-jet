@@ -16,14 +16,14 @@ package jet
 
 import (
 	"bytes"
-	"net/http"
+	//"net/http"
 	"sync"
 	"path/filepath"
 
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 
-	ckjet "github.com/CloudyKit/jet"
+	"github.com/CloudyKit/jet"
 )
 
 func init() {
@@ -31,22 +31,26 @@ func init() {
 		ServerType: "http",
 		Action:     setup,
 	})
-	httpserver.RegisterDevDirective("jet", "templates")
 }
 
 // setup configures a new Templates middleware instance.
 func setup(c *caddy.Controller) error {
-	rules, err := jetParse(c)
+	_, err := NewJetTemplates(c)
+	return err
+}
+
+// creates a JetTemplates structure from a controller; useful for testing
+func NewJetTemplates(controller *caddy.Controller) (JetTemplates, error) {
+	rules, err := jetParse(controller)
 	if err != nil {
-		return err
+		return (JetTemplates{}), err
 	}
 
-	cfg := httpserver.GetConfig(c)
+	cfg := httpserver.GetConfig(controller)
 
 	tmpls := JetTemplates{
 		Rules:   rules,
-		Root:    cfg.Root,
-		FileSys: http.Dir(cfg.Root),
+		SiteRoot: cfg.Root,
 		BufPool: &sync.Pool{
 			New: func() interface{} {
 				return new(bytes.Buffer)
@@ -59,11 +63,11 @@ func setup(c *caddy.Controller) error {
 		return tmpls
 	})
 
-	return nil
+	return tmpls, nil
 }
 
-func (r Rule) initView(cfg *httpserver.SiteConfig) *ckjet.Set {
-	return ckjet.NewHTMLSet(filepath.Join(cfg.Root, r.Path))
+func (r Rule) initView(cfg *httpserver.SiteConfig) jet.Set {
+	return *jet.NewHTMLSet(filepath.Join(cfg.Root, r.Root))
 }
 
 func jetParse(c *caddy.Controller) ([]Rule, error) {
@@ -73,7 +77,7 @@ func jetParse(c *caddy.Controller) ([]Rule, error) {
 	for c.Next() {
 		var rule Rule
 
-		rule.Path = defaultJetPath
+		rule.Root = defaultJetPath
 		rule.Extensions = defaultJetExtensions
 
 		args := c.RemainingArgs()
@@ -88,7 +92,7 @@ func jetParse(c *caddy.Controller) ([]Rule, error) {
 					if len(args) != 1 {
 						return nil, c.ArgErr()
 					}
-					rule.Path = args[0]
+					rule.Root = args[0]
 
 				case "ext":
 					args := c.RemainingArgs()
@@ -100,7 +104,7 @@ func jetParse(c *caddy.Controller) ([]Rule, error) {
 			}
 		default:
 			// First argument would be the path
-			rule.Path = args[0]
+			rule.Root = args[0]
 
 			// Any remaining arguments are extensions
 			rule.Extensions = args[1:]
@@ -121,4 +125,4 @@ func jetParse(c *caddy.Controller) ([]Rule, error) {
 }
 
 const defaultJetPath = "/"
-var defaultJetExtensions = []string{".html", ".htm", ".jet"}
+var defaultJetExtensions = []string{".html", ".jet"}

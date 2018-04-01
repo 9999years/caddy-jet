@@ -26,17 +26,40 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 
-	ckjet "github.com/CloudyKit/jet"
+	"github.com/CloudyKit/jet"
 )
+
+// JetTemplates is middleware to render templated files as the HTTP response.
+type JetTemplates struct {
+	Next     httpserver.Handler // next handler
+	SiteRoot string
+	Rules    []Rule
+	BufPool  *sync.Pool // docs: "A Pool must not be copied after first use."
+}
+
+// Rule represents a jet rule. A template will only execute
+// with this rule if the request path matches the Root path specified
+// and requests a resource with one of the extensions specified.
+type Rule struct {
+	// root path for the rule; nothing outside of here is loaded
+	Root       string
+	// extensions to render
+	Extensions []string
+	// index files to try
+	IndexFiles []string
+	// template loader, essentially
+	View       jet.Set
+}
 
 // ServeHTTP implements the httpserver.Handler interface.
 func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 	// iterate rules, to find first one that matches the request path
 	for _, rule := range t.Rules {
-		if !httpserver.Path(r.URL.Path).Matches(rule.Path) {
+		if !httpserver.Path(r.URL.Path).Matches(rule.Root) {
 			continue
 		}
 
@@ -75,8 +98,16 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 		}
 
 		// create a new template
-		templateName := filepath.Base(fpath)
-		tpl, err := rule.View.GetTemplate(templateName)
+		templatePath := httpserver.SafePath(t.SiteRoot, fpath)
+		loadPath, err := filepath.Rel(rule.Root, templatePath)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+		fmt.Printf("diagnostic: rendering jet tpl!\n" +
+			"root path: %s\nreq path: %s\nloading %s\n",
+			t.SiteRoot, fpath, loadPath)
+		tpl, err := rule.View.GetTemplate(loadPath)
+		println("template gotten")
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -92,7 +123,7 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 
 		// create execution context for the template template
 		ctx := httpserver.NewContextWithHeader(w.Header())
-		ctx.Root = t.FileSys
+		ctx.Root = http.Dir(httpserver.SafePath(t.SiteRoot, rule.Root))
 		ctx.Req = r
 		ctx.URL = r.URL
 
@@ -115,29 +146,10 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 
 		// at last, write the rendered template to the response; make sure to use
 		// use the proper status code, since ServeContent hard-codes 2xx codes...
-		http.ServeContent(rb.StatusCodeWriter(w), r, templateName, modTime, bytes.NewReader(buf.Bytes()))
+		http.ServeContent(rb.StatusCodeWriter(w), r, templatePath, modTime, bytes.NewReader(buf.Bytes()))
 
 		return 0, nil
 	}
 
 	return t.Next.ServeHTTP(w, r)
-}
-
-// JetTemplates is middleware to render templated files as the HTTP response.
-type JetTemplates struct {
-	Next    httpserver.Handler
-	Rules   []Rule
-	Root    string
-	FileSys http.FileSystem
-	BufPool *sync.Pool // docs: "A Pool must not be copied after first use."
-}
-
-// Rule represents a jet rule. A template will only execute
-// with this rule if the request path matches the Path specified
-// and requests a resource with one of the extensions specified.
-type Rule struct {
-	Path       string
-	Extensions []string
-	IndexFiles []string
-	View       *ckjet.Set
 }
