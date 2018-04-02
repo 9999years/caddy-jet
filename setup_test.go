@@ -115,3 +115,20 @@ func TestTemplatesParse(t *testing.T) {
 	}
 
 }
+
+func testJetTemplates(t *testing.T, rule string) {
+	tpls, err := jetTemplates(rule)
+	if err != nil {
+		t.Fatalf("Rule `%v` resulted in non-nil err %v", rule, err)
+	}
+	if tpls.Next == nil {
+		t.Fatalf("Rule `%v` resulted in nil Next field", rule)
+	}
+	if tpls.SiteRoot == "" {
+		t.Fatalf("Rule `%v` resulted in empty SiteRoot field", rule)
+	}
+}
+
+func TestJetTemplates(t *testing.T) {
+	testJetTemplates(t, "jet")
+}

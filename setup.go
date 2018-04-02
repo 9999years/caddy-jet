@@ -17,6 +17,7 @@ package jet
 import (
 	"bytes"
 	//"net/http"
+	"fmt"
 	"sync"
 	"path/filepath"
 
@@ -59,6 +60,7 @@ func NewJetTemplates(controller *caddy.Controller) (JetTemplates, error) {
 	}
 
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
+		fmt.Printf("next is %v\n", next)
 		tmpls.Next = next
 		return tmpls
 	})

@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"mime"
 	"net/http"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -65,6 +64,8 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 
 		fpath := r.URL.Path
 
+		fmt.Printf("rule %v matches path %v\n", rule.Root, fpath)
+
 		// get a buffer from the pool and make a response recorder
 		buf := t.BufPool.Get().(*bytes.Buffer)
 		buf.Reset()
@@ -73,7 +74,7 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 		// only buffer the response when we want to execute a template
 		shouldBuf := func(status int, header http.Header) bool {
 			// see if this request matches a template extension
-			reqExt := path.Ext(fpath)
+			reqExt := filepath.Ext(fpath)
 			for _, ext := range rule.Extensions {
 				if reqExt == "" {
 					// request has no extension, so check response Content-Type
@@ -92,21 +93,22 @@ func (t JetTemplates) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, er
 		rb := httpserver.NewResponseBuffer(buf, w, shouldBuf)
 
 		// pass request up the chain to let another middleware provide us the template
-		code, err := t.Next.ServeHTTP(rb, r)
-		if !rb.Buffered() || code >= 300 || err != nil {
-			return code, err
-		}
+		//println("passing req. down chain")
+		//code, err := t.Next.ServeHTTP(rb, r)
+		//fmt.Printf("%v", rb.Buffer)
+		//if !rb.Buffered() || code >= 300 || err != nil {
+			//return code, err
+		//}
+		//println("continuing")
 
 		// create a new template
-		templatePath := httpserver.SafePath(t.SiteRoot, fpath)
-		loadPath, err := filepath.Rel(rule.Root, templatePath)
-		if err != nil {
-			return http.StatusInternalServerError, err
-		}
+		templatePath := filepath.ToSlash(httpserver.SafePath(t.SiteRoot, fpath))
+		fmt.Printf("\nDIAG: templatePath = %v\n\t(= %v + %v)\n",
+			templatePath, t.SiteRoot, fpath)
 		fmt.Printf("diagnostic: rendering jet tpl!\n" +
 			"root path: %s\nreq path: %s\nloading %s\n",
-			t.SiteRoot, fpath, loadPath)
-		tpl, err := rule.View.GetTemplate(loadPath)
+			t.SiteRoot, fpath, templatePath)
+		tpl, err := rule.View.GetTemplate(templatePath)
 		println("template gotten")
 		if err != nil {
 			return http.StatusInternalServerError, err

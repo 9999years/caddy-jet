@@ -183,20 +183,27 @@ type ReqTest struct {
 	code int
 }
 
+func jetTemplates(rule string) (JetTemplates, error) {
+	controller := caddy.NewTestController("http", `localhost {
+		root ./testdata
+		errors stderr` +
+		rule +
+	"\n}")
+	return NewJetTemplates(controller)
+}
+
 func testReq(test ReqTest) {
 	req, err := http.NewRequest("GET", test.req, nil)
 	if err != nil {
 		test.t.Fatalf("Test: Could not create HTTP request to %v: %v",
 			test.req, err)
 	}
-	controller := caddy.NewTestController("http", `localhost {
-		root ./testdata
-		errors stderr` +
-		test.rule +
-	"\n}")
-	jetTemplates, err := NewJetTemplates(controller)
+	jetTemplates, err := jetTemplates(test.rule)
 	if err != nil {
 		test.t.Fatalf("Error setting up templates: %v", err)
+	}
+	jetTemplates.Next = staticfiles.FileServer{
+		Root: http.Dir(jetTemplates.SiteRoot),
 	}
 	resp := httptest.NewRecorder()
 
